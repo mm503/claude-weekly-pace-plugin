@@ -1,4 +1,4 @@
-# weekly-pace
+# weekly-pace (Weekly Pace & Model Switcher)
 
 A Claude Code plugin (weekly pace bars plus model/effort buttons above the prompt), distributed as a
 marketplace from this repo and as a downloadable zip.

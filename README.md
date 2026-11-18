@@ -1,4 +1,4 @@
-# weekly-pace
+# Weekly Pace & Model Switcher
 
 A Claude Code plugin that shows, above the prompt, whether you are spending your weekly usage faster
 than the week is passing, and lets you switch model and effort in one click.
