@@ -37,7 +37,7 @@ jobs:
           v=$(sed -n 's/.*"version": *"\([^"]*\)".*/\1/p' weekly-pace/.claude-plugin/plugin.json)
           [ "v$v" = "${GITHUB_REF_NAME}" ] || { echo "tag ${GITHUB_REF_NAME} != plugin version v$v"; exit 1; }
       - run: scripts/package.sh
-      - uses: softprops/action-gh-release@v2
+      - uses: softprops/action-gh-release@v3
         with:
           files: dist/*.zip
           generate_release_notes: true
