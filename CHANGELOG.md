@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.3.2
+
+- Add the display name "Weekly Pace & Model Switcher".
+
 ## 0.3.1
 
 - Fix the release zip: it now contains the plugin alone, so the desktop app's zip upload accepts it.
