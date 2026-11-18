@@ -3,12 +3,7 @@
 A Claude Code plugin that shows, above the prompt, whether you are spending your weekly usage faster
 than the week is passing, and lets you switch model and effort in one click.
 
-```
-Week time   [■■■■■■·······························]   9%
-Week usage  [■■■··································]   6%  on pace
-
- Fable  Opus  Sonnet  Haiku  │  low  medium  high  xhigh  max  │  warm 42m
-```
+![weekly-pace in the Claude desktop app: week time and usage bars with model and effort buttons above the prompt](docs/screenshot-desktop.png)
 
 - **Week time** (blue): how far you are through your weekly limit window.
 - **Week usage** (orange): how much of the weekly all-models limit you have used, with a verdict:

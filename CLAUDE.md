@@ -10,6 +10,7 @@ marketplace from this repo and as a downloadable zip.
   (listed by `hooks/hooks.json`), tests in `tests/`, types in `types/`.
 - `scripts/package.sh`: validates and builds `dist/weekly-pace-<version>.zip` from `HEAD`.
 - `.gitattributes`: `export-ignore` decides what stays out of the zip.
+- `docs/`: README screenshots.
 - `.github/workflows/ci.yml`: validate and test on push/PR; a `v*` tag builds and publishes the zip.
 
 ## Commands
