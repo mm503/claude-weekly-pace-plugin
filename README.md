@@ -63,6 +63,16 @@ claude plugin uninstall weekly-pace@weekly-pace
   cache lifetime. Each model keeps its own cache, so switching models shows `cold` until it answers.
 - The band redraws every 30 seconds, so the time bar and the countdown keep moving between turns.
 
+## Commands it runs
+
+The plugin runs slash commands only when you click one of its buttons, and only these:
+
+- a model button runs `/model <id>` with that button's model id (see `MODELS` below);
+- an effort button runs `/effort <level>` with that button's level (`low` to `max`).
+
+It runs nothing on its own: no command at startup, on a timer, or in response to a turn. It also
+watches `/model` and `/effort` when you run them yourself, only to highlight the active buttons.
+
 ## Customize
 
 Everything is at the top of `weekly-pace/hooks/register.tsx`:
