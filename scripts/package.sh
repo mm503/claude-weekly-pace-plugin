@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
-# Build dist/weekly-pace-<version>.zip: the repo as a ready-to-add marketplace
-# (marketplace.json at the root, plugin in ./weekly-pace). Contents follow
-# .gitattributes export-ignore, so only tracked, shipped files are included.
+# Build dist/weekly-pace-<version>.zip: the plugin itself (plugin.json at
+# <name>/.claude-plugin/), the form the desktop app's zip upload and
+# `claude --plugin-dir` expect. Built from HEAD's weekly-pace/ folder.
 set -euo pipefail
 
 cd "$(dirname "$0")/.."
@@ -14,5 +14,5 @@ claude plugin validate weekly-pace
 
 name="weekly-pace-$version"
 mkdir -p dist
-git archive --format=zip --prefix="$name/" -o "dist/$name.zip" HEAD
+git archive --format=zip --prefix="$name/" -o "dist/$name.zip" HEAD:weekly-pace
 echo "dist/$name.zip"

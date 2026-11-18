@@ -8,7 +8,8 @@ marketplace from this repo and as a downloadable zip.
 - `.claude-plugin/marketplace.json`: repo root is the marketplace; it points at `./weekly-pace`.
 - `weekly-pace/`: the plugin. Manifest in `.claude-plugin/plugin.json`, code in `hooks/register.tsx`
   (listed by `hooks/hooks.json`), tests in `tests/`, types in `types/`.
-- `scripts/package.sh`: validates and builds `dist/weekly-pace-<version>.zip` from `HEAD`.
+- `scripts/package.sh`: validates and builds `dist/weekly-pace-<version>.zip` from `HEAD:weekly-pace`. The zip must be the
+  plugin alone (`.claude-plugin/plugin.json` at its root or in one top-level folder), not the marketplace.
 - `.gitattributes`: `export-ignore` decides what stays out of the zip.
 - `docs/`: README screenshots.
 - `.github/workflows/ci.yml`: validate and test on push/PR; a `v*` tag builds and publishes the zip.

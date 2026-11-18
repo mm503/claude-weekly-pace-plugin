@@ -42,12 +42,10 @@ New conversations load it by themselves; in one already open, run `/reload-plugi
 ### From a zip
 
 Download `weekly-pace-<version>.zip` from the
-[Releases](https://github.com/mm503/weekly-pace/releases) page, unpack it, then:
+[Releases](https://github.com/mm503/weekly-pace/releases) page, then either:
 
-```bash
-claude plugin marketplace add ./weekly-pace-<version> --scope user
-claude plugin install weekly-pace@weekly-pace --scope user
-```
+- in the desktop app, click **+** next to the prompt box, choose **Plugins** and upload the zip; or
+- in the terminal, load it for one session: `claude --plugin-dir weekly-pace-<version>.zip`.
 
 ### Uninstall
 
@@ -86,7 +84,7 @@ scripts/package.sh   # builds dist/weekly-pace-<version>.zip
 ```
 
 To release: bump `version` in `weekly-pace/.claude-plugin/plugin.json`, add a `CHANGELOG.md` entry, then
-push a matching tag (`git tag v0.2.0 && git push --tags`). CI validates, builds the zip and attaches it
+push a matching tag (`git tag vX.Y.Z && git push --tags`). CI validates, builds the zip and attaches it
 to a GitHub release.
 
 ## License
