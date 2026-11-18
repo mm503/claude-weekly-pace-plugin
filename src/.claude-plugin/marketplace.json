@@ -1,0 +1,14 @@
+{
+  "name": "weekly-pace",
+  "description": "Weekly usage pace bars and one-click model and effort switching for Claude Code",
+  "owner": {
+    "name": "mm503"
+  },
+  "plugins": [
+    {
+      "name": "weekly-pace",
+      "source": "./weekly-pace",
+      "description": "Weekly pace bars (time elapsed vs. usage) with one-click model and effort switching above the prompt"
+    }
+  ]
+}
