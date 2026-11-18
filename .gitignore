@@ -4,3 +4,4 @@
 .claude-plugin/types/
 weekly-pace/.claude-plugin/types/
 weekly-pace/tsconfig.json
+dist/

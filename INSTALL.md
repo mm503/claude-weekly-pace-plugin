@@ -7,9 +7,11 @@ Do this when the user asks you to install this plugin from this folder.
 Run `claude plugin install weekly-pace --marketplace mm503/weekly-pace`, or in the desktop app tell the
 user: **+** next to the prompt box → **Plugins** → **Add marketplace** `mm503/weekly-pace` → **Add plugin**.
 
-## From this folder (no GitHub)
+## From the downloaded zip or this folder (no GitHub)
 
-1. Copy this folder to `~/.claude/local-marketplaces/weekly-pace-marketplace/` (replace an older copy there).
+The release zip (`weekly-pace-<version>.zip`) unpacks to a folder that is itself a marketplace.
+
+1. Copy the unpacked folder to `~/.claude/local-marketplaces/weekly-pace-marketplace/` (replace an older copy there).
 2. Run `claude plugin validate ~/.claude/local-marketplaces/weekly-pace-marketplace` and
    `claude plugin test ~/.claude/local-marketplaces/weekly-pace-marketplace/weekly-pace`. Both must pass;
    notices about a missing icon are optional.

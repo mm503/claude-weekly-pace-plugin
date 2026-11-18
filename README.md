@@ -44,6 +44,16 @@ claude plugin install weekly-pace --marketplace mm503/weekly-pace
 
 New conversations load it by themselves; in one already open, run `/reload-plugins`.
 
+### From a zip
+
+Download `weekly-pace-<version>.zip` from the
+[Releases](https://github.com/mm503/weekly-pace/releases) page, unpack it, then:
+
+```bash
+claude plugin marketplace add ./weekly-pace-<version> --scope user
+claude plugin install weekly-pace@weekly-pace --scope user
+```
+
 ### Uninstall
 
 ```bash
@@ -77,7 +87,12 @@ Everything is at the top of `weekly-pace/hooks/register.tsx`:
 ```bash
 claude plugin validate .
 claude plugin test weekly-pace
+scripts/package.sh   # builds dist/weekly-pace-<version>.zip
 ```
+
+To release: bump `version` in `weekly-pace/.claude-plugin/plugin.json`, add a `CHANGELOG.md` entry, then
+push a matching tag (`git tag v0.2.0 && git push --tags`). CI validates, builds the zip and attaches it
+to a GitHub release.
 
 ## License
 
