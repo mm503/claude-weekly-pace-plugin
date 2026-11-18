@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.3.4
+
+- README lists the slash commands the plugin runs and when.
+
 ## 0.3.3
 
 - Fix install instructions: they named the wrong GitHub repository.
