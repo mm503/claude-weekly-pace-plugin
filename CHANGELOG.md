@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.3.1
+
+- Fix the release zip: it now contains the plugin alone, so the desktop app's zip upload accepts it.
+
 ## 0.3.0
 
 - Add plugin icon and a desktop screenshot to the README.
