@@ -116,7 +116,12 @@ test('a model switched by hand and an effort typed are highlighted', async ($, o
     requested_model: 'opus',
     source: 'command',
   } as any)
-  await $.command.run({ command: 'effort', args: 'high' } as any)
+  await $.command.run({
+    command: 'effort',
+    args: 'high',
+    origin: { kind: 'composer' },
+    presentation: { isFullscreen: false, columns: 80 },
+  })
   const ui = await $.ui.mount({ ...BAND, surface: 'desktop' })
   expect((await ui.find({ key: 'claude-opus-5-5' }))?.props.variant).toBe('primary')
   expect((await ui.find({ key: 'claude-fable-5-2' }))?.props.variant).toBeUndefined()

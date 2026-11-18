@@ -20,7 +20,7 @@ a Claude subscription (Pro or Max); without one, only the buttons show.
 ### Claude desktop app
 
 1. Click **+** next to the prompt box, then **Plugins**.
-2. Choose **Add marketplace** and enter `mm503/weekly-pace`.
+2. Choose **Add marketplace** and enter `mm503/claude-weekly-pace-plugin`.
 3. Find **weekly-pace** in the list and choose **Add plugin**.
 
 ### Terminal
@@ -28,13 +28,13 @@ a Claude subscription (Pro or Max); without one, only the buttons show.
 At the Claude Code prompt:
 
 ```
-/plugin install weekly-pace --marketplace mm503/weekly-pace
+/plugin install weekly-pace --marketplace mm503/claude-weekly-pace-plugin
 ```
 
 Or from a shell:
 
 ```bash
-claude plugin install weekly-pace --marketplace mm503/weekly-pace
+claude plugin install weekly-pace --marketplace mm503/claude-weekly-pace-plugin
 ```
 
 New conversations load it by themselves; in one already open, run `/reload-plugins`.
@@ -42,7 +42,7 @@ New conversations load it by themselves; in one already open, run `/reload-plugi
 ### From a zip
 
 Download `weekly-pace-<version>.zip` from the
-[Releases](https://github.com/mm503/weekly-pace/releases) page, then either:
+[Releases](https://github.com/mm503/claude-weekly-pace-plugin/releases) page, then either:
 
 - in the desktop app, click **+** next to the prompt box, choose **Plugins** and upload the zip; or
 - in the terminal, load it for one session: `claude --plugin-dir weekly-pace-<version>.zip`.

@@ -12,6 +12,7 @@ marketplace from this repo and as a downloadable zip.
   plugin alone (`.claude-plugin/plugin.json` at its root or in one top-level folder), not the marketplace.
 - `docs/`: README screenshots.
 - `.github/workflows/ci.yml`: validate and test on push/PR; a `v*` tag builds and publishes the zip.
+  It pins the Claude Code version (`CLAUDE_CODE_VERSION`); bump it deliberately.
 
 ## Commands
 

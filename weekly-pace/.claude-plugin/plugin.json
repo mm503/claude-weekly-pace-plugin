@@ -1,7 +1,7 @@
 {
   "name": "weekly-pace",
   "displayName": "Weekly Pace & Model Switcher",
-  "version": "0.3.2",
+  "version": "0.3.3",
   "description": "Weekly pace bars (time elapsed vs. usage) with one-click model and effort switching above the prompt",
   "author": { "name": "mm503" },
   "license": "MIT",

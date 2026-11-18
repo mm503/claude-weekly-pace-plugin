@@ -115,11 +115,13 @@ export const register: Register = on => {
   })
 
   // /model typed by hand, the picker, or a button: the band follows at once.
+  // Both hooks only observe: on a failure, .catch passes the event through
+  // (next replays what it already settled to; nothing runs twice).
   on('classic.PostModelSwitch', async ($, e, next) => {
     const result = await next(e)
     await update($, model, () => e.to_model).catch(() => {})
     return result
-  })
+  }).catch(($, e, next) => next(e))
 
   // /effort typed by hand or from a button.
   on('command.run', { command: 'effort' }, async ($, e, next) => {
@@ -129,7 +131,7 @@ export const register: Register = on => {
       await update($, effort, () => level).catch(() => {})
     }
     return result
-  })
+  }).catch(($, e, next) => next(e))
 
   on('session.measure', async ($, e, next) => {
     const w = e.rateLimits.find(r => r.kind === 'seven_day')

@@ -4,8 +4,8 @@ Do this when the user asks you to install this plugin from this folder.
 
 ## From GitHub (preferred, once the repository is published)
 
-Run `claude plugin install weekly-pace --marketplace mm503/weekly-pace`, or in the desktop app tell the
-user: **+** next to the prompt box → **Plugins** → **Add marketplace** `mm503/weekly-pace` → **Add plugin**.
+Run `claude plugin install weekly-pace --marketplace mm503/claude-weekly-pace-plugin`, or in the desktop app tell the
+user: **+** next to the prompt box → **Plugins** → **Add marketplace** `mm503/claude-weekly-pace-plugin` → **Add plugin**.
 
 ## From the downloaded zip (no GitHub)
 

@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.3.3
+
+- Fix install instructions: they named the wrong GitHub repository.
+- Observer hooks on `/model` and `/effort` pass the event through if they fail.
+- Remove `.gitattributes` export rules, which the plugin directory rejects.
+- CI pins the Claude Code version and grants write access to the release job only.
+- Tests call `/effort` with fully typed input instead of `as any`.
+
 ## 0.3.2
 
 - Add the display name "Weekly Pace & Model Switcher".
@@ -8,11 +16,10 @@
 
 - Fix the release zip: it now contains the plugin alone, so the desktop app's zip upload accepts it.
 
-## 0.3.0
+## 0.3.0 (withdrawn: its zip was a marketplace, which the desktop app's upload rejects)
 
 - Add plugin icon and a desktop screenshot to the README.
-- Install from a downloadable zip: the repo is now a root marketplace, with a packaging script and a
-  release workflow that attaches the zip to GitHub releases.
+- The repo root is the marketplace; a release workflow attaches a zip to GitHub releases.
 - CI validates against the plugin directory's rules.
 - Fix a test type error flagged by newer Claude Code validators.
 
