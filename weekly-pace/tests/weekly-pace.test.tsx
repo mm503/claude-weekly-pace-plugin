@@ -19,13 +19,17 @@ const BAND = {
   },
 } as const
 
-function engine(on: any, used: number | null, model = 'claude-fable-5-2') {
+// A 5-hour window that resets 3 hours from START, so 40% of it has passed.
+const FIVE_RESET = START + 3 * 3600 * 1000
+
+function engine(on: any, used: number | null, model = 'claude-fable-5-2', five: number | null = null) {
+  const limits =
+    used === null ? [] : [{ kind: 'seven_day', percentUsed: used, resetsAt: new Date(RESET).toISOString() }]
+  if (used !== null && five !== null) {
+    limits.push({ kind: 'five_hour', percentUsed: five, resetsAt: new Date(FIVE_RESET).toISOString() })
+  }
   on('session.usage', () => ({
-    value: {
-      startedAt: START,
-      context: { contextWindow: 1000000 },
-      rateLimits: used === null ? [] : [{ kind: 'seven_day', percentUsed: used, resetsAt: new Date(RESET).toISOString() }],
-    },
+    value: { startedAt: START, context: { contextWindow: 1000000 }, rateLimits: limits },
   }))
   on('session.model', () => ({ value: model }))
   on('session.start', (_: unknown, e: any) => ({ cwd: e.cwd }))
@@ -41,38 +45,63 @@ test('before a usage reading the band shows the buttons alone', async ($, on) =>
   await $.session.start({ cwd: '/', surface: 'desktop', isInteractive: true })
   for (const surface of surfaces) {
     const ui = await $.ui.mount({ ...BAND, surface })
-    expect(await ui.find({ key: 'track-time' })).toBeUndefined()
+    expect(await ui.find({ key: 'track-week' })).toBeUndefined()
     expect(await ui.findAll({ type: 'Button' })).toHaveLength(9)
     expect((await ui.find({ type: 'Text', text: /cold/ }))?.text).toBe('cold')
     await ui.unmount()
   }
 })
 
-test('both tracks have one width and the fills follow the figures', async ($, on) => {
+// The track's cells and how many of them a percentage fills.
+async function track(ui: any, id = 'week') {
+  const cells = (await ui.find({ key: `track-${id}` }))?.props.width as number
+  return { cells, of: (pct: number) => Math.round((pct / 100) * cells) }
+}
+
+test('usage ahead of the week fills to the time mark, then red to usage', async ($, on) => {
   mock.clock(on, { now: START })
   engine(on, 50)
   await $.session.start({ cwd: '/', surface: 'desktop', isInteractive: true })
   for (const surface of surfaces) {
     const ui = await $.ui.mount({ ...BAND, surface })
-    const time = await ui.find({ key: 'track-time' })
-    const usage = await ui.find({ key: 'track-usage' })
-    expect(time?.props.width).toBe(usage?.props.width)
-    const cells = time?.props.width as number
-    expect((await ui.find({ key: 'fill-time' }))?.props.width).toBe(Math.round((2 / 7) * cells))
-    expect((await ui.find({ key: 'fill-usage' }))?.props.width).toBe(Math.round(0.5 * cells))
+    const { of } = await track(ui)
+    const t = of((2 / 7) * 100)
+    expect((await ui.find({ key: 'fill-usage-week' }))?.props.width).toBe(t)
+    expect((await ui.find({ key: 'fill-over-week' }))?.props.width).toBe(of(50) - t)
+    expect((await ui.find({ key: 'fill-over-week' }))?.props.backgroundColor).toBe('error')
+    expect(await ui.find({ key: 'fill-headroom-week' })).toBeUndefined()
     expect((await ui.find({ type: 'Text', text: /over/ }))?.text).toBe('+21 over')
     await ui.unmount()
   }
 })
 
-test('a narrow band keeps both tracks equal', async ($, on) => {
+test('usage behind the week fills to usage, then green to the time mark', async ($, on) => {
+  mock.clock(on, { now: START })
+  engine(on, 10)
+  await $.session.start({ cwd: '/', surface: 'desktop', isInteractive: true })
+  for (const surface of surfaces) {
+    const ui = await $.ui.mount({ ...BAND, surface })
+    const { of } = await track(ui)
+    expect((await ui.find({ key: 'fill-usage-week' }))?.props.width).toBe(of(10))
+    expect((await ui.find({ key: 'fill-headroom-week' }))?.props.width).toBe(of((2 / 7) * 100) - of(10))
+    expect((await ui.find({ key: 'fill-headroom-week' }))?.props.backgroundColor).toBe('#2f5a2a')
+    expect(await ui.find({ key: 'fill-over-week' })).toBeUndefined()
+    expect((await ui.find({ type: 'Text', text: /under/ }))?.text).toBe('-19 under')
+    expect(await ui.find({ key: 'track-five' })).toBeUndefined()
+    expect((await ui.find({ type: 'Text', text: /\/ 29%/ }))?.text).toBe(' / 29%')
+    await ui.unmount()
+  }
+})
+
+test('a narrow band still draws the track', async ($, on) => {
   mock.clock(on, { now: START })
   engine(on, 0)
   await $.session.start({ cwd: '/', surface: 'terminal', isInteractive: true })
   const ui = await $.ui.mount({ ...BAND, props: { ...BAND.props, bodyColumns: 20 }, surface: 'terminal' })
-  const time = await ui.find({ key: 'track-time' })
-  expect(time?.props.width).toBe((await ui.find({ key: 'track-usage' }))?.props.width)
-  expect(await ui.find({ key: 'fill-usage' })).toBeUndefined()
+  const { cells, of } = await track(ui)
+  expect(cells).toBe(10)
+  expect(await ui.find({ key: 'fill-usage-week' })).toBeUndefined()
+  expect((await ui.find({ key: 'fill-headroom-week' }))?.props.width).toBe(of((2 / 7) * 100))
   await ui.unmount()
 })
 
@@ -96,11 +125,10 @@ test('past the reset the week starts over until a new reading comes', async ($, 
   engine(on, 90)
   await $.session.start({ cwd: '/', surface: 'desktop', isInteractive: true })
   const ui = await $.ui.mount({ ...BAND, surface: 'desktop' })
-  expect(await ui.find({ key: 'fill-usage' })).toBeUndefined()
+  const { of } = await track(ui)
+  expect(await ui.find({ key: 'fill-usage-week' })).toBeUndefined()
   expect((await ui.find({ type: 'Text', text: /^0%$/ }))?.text).toBe('0%')
-  expect((await ui.find({ key: 'fill-time' }))?.props.width).toBe(
-    Math.round((0.5 / 7) * ((await ui.find({ key: 'track-time' }))?.props.width as number)),
-  )
+  expect((await ui.find({ key: 'fill-headroom-week' }))?.props.width).toBe(of((0.5 / 7) * 100))
   await ui.unmount()
 })
 
@@ -168,8 +196,10 @@ test('a new conversation starts from the reading an earlier session saved', asyn
   engine(on, null)
   await $.session.start({ cwd: '/', surface: 'desktop', isInteractive: true })
   const ui = await $.ui.mount({ ...BAND, surface: 'desktop' })
-  const cells = (await ui.find({ key: 'track-usage' }))?.props.width as number
-  expect((await ui.find({ key: 'fill-usage' }))?.props.width).toBe(Math.round(0.4 * cells))
+  const { of } = await track(ui)
+  const t = of((2 / 7) * 100)
+  expect((await ui.find({ key: 'fill-usage-week' }))?.props.width).toBe(t)
+  expect((await ui.find({ key: 'fill-over-week' }))?.props.width).toBe(of(40) - t)
   await ui.unmount()
 })
 
@@ -183,4 +213,60 @@ test('a live reading is saved for the next conversation', async ($, on) => {
   engine(on, 33)
   await $.session.start({ cwd: '/', surface: 'desktop', isInteractive: true })
   expect(JSON.stringify(saved)).toContain('"used":33')
+})
+
+test('a plan with a 5-hour window gets a second row for it', async ($, on) => {
+  mock.clock(on, { now: START })
+  engine(on, 10, undefined, 70)
+  await $.session.start({ cwd: '/', surface: 'desktop', isInteractive: true })
+  for (const surface of surfaces) {
+    const ui = await $.ui.mount({ ...BAND, surface })
+    const week = await track(ui)
+    const five = await track(ui, 'five')
+    expect(five.cells).toBe(week.cells)
+    expect((await ui.find({ key: 'fill-usage-five' }))?.props.width).toBe(five.of(40))
+    expect((await ui.find({ key: 'fill-over-five' }))?.props.width).toBe(five.of(70) - five.of(40))
+    expect((await ui.find({ type: 'Text', text: /^5h$/ }))?.text).toBe('5h')
+    expect((await ui.find({ type: 'Text', text: /over/ }))?.text).toBe('+30 over')
+    await ui.unmount()
+  }
+})
+
+test('past its reset the 5-hour row goes until a new reading opens one', async ($, on) => {
+  mock.clock(on, { now: FIVE_RESET + 60 * 1000 })
+  engine(on, 10, undefined, 70)
+  await $.session.start({ cwd: '/', surface: 'desktop', isInteractive: true })
+  const ui = await $.ui.mount({ ...BAND, surface: 'desktop' })
+  expect(await ui.find({ key: 'track-week' })).toBeDefined()
+  expect(await ui.find({ key: 'track-five' })).toBeUndefined()
+  await ui.unmount()
+})
+
+test('a reading without a 5-hour window clears the row', async ($, on) => {
+  mock.clock(on, { now: START })
+  engine(on, 10, undefined, 70)
+  await $.session.start({ cwd: '/', surface: 'desktop', isInteractive: true })
+  await $.session.measure({
+    context: { contextWindow: 1000000 } as any,
+    rateLimits: [{ kind: 'seven_day', percentUsed: 12, resetsAt: new Date(RESET).toISOString() }],
+    changed: ['rateLimits'],
+  })
+  const ui = await $.ui.mount({ ...BAND, surface: 'desktop' })
+  expect(await ui.find({ key: 'track-five' })).toBeUndefined()
+  await ui.unmount()
+})
+
+test('a new conversation starts from a saved 5-hour reading too', async ($, on) => {
+  mock.clock(on, { now: START })
+  mock.store(on, {
+    'last-week-1': { used: 40, resetsAt: new Date(RESET).toISOString() },
+    'last-five-1': { used: 20, resetsAt: new Date(FIVE_RESET).toISOString() },
+  })
+  engine(on, null)
+  await $.session.start({ cwd: '/', surface: 'desktop', isInteractive: true })
+  const ui = await $.ui.mount({ ...BAND, surface: 'desktop' })
+  const five = await track(ui, 'five')
+  expect((await ui.find({ key: 'fill-usage-five' }))?.props.width).toBe(five.of(20))
+  expect((await ui.find({ key: 'fill-headroom-five' }))?.props.width).toBe(five.of(40) - five.of(20))
+  await ui.unmount()
 })

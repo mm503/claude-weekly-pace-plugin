@@ -1,5 +1,5 @@
 import { atom, read, update } from 'claude-code'
-import type { Register, RenderChildren } from 'claude-code'
+import type { Register, SessionRateLimit } from 'claude-code'
 
 import type { Week } from '../types'
 
@@ -7,6 +7,8 @@ import type { Week } from '../types'
 // earlier version stored, which outlives a reload.
 const week = atom({ plugin: 'weekly-pace', key: 'week' } as const, null as Week, { shape: 'week-2' })
 const effort = atom({ plugin: 'weekly-pace', key: 'effort' } as const, '', { shape: 'effort-2' })
+// The 5-hour window, on plans that have one; null where responses report none.
+const fiveHour = atom({ plugin: 'weekly-pace', key: 'fiveHour' } as const, null as Week, { shape: 'fiveHour-1' })
 const model = atom({ plugin: 'weekly-pace', key: 'model' } as const, '', { shape: 'model-2' })
 // Last main-thread response per model family: the prompt cache is per model.
 const warmAt = atom({ plugin: 'weekly-pace', key: 'warmAt' } as const, {} as Record<string, number>, {
@@ -18,35 +20,47 @@ const tick = atom({ plugin: 'weekly-pace', key: 'tick' } as const, 0, { shape: '
 // Prompt-cache lifetime: warm while the last response is newer than this.
 const CACHE_TTL_MS = 60 * 60 * 1000
 const WEEK_MS = 7 * 24 * 3600 * 1000
+const FIVE_HOUR_MS = 5 * 3600 * 1000
 const TICK_MS = 30 * 1000
 
+// Weakest to strongest, left to right.
 const MODELS = [
-  ['Fable', 'claude-fable-5-2'],
-  ['Opus', 'claude-opus-5-5'],
-  ['Sonnet', 'claude-sonnet-5-5'],
   ['Haiku', 'claude-haiku-5-5'],
+  ['Sonnet', 'claude-sonnet-5-5'],
+  ['Opus', 'claude-opus-5-5'],
+  ['Fable', 'claude-fable-5-2'],
 ] as const
 const EFFORTS = ['low', 'medium', 'high', 'xhigh', 'max'] as const
 
-// The track matches the unselected buttons beside it in the desktop's dark
-// theme (no theme key names that color); the fills are theme keys: a cool
-// fill for time and Claude's own orange for usage.
+// One track per window (the week, and 5 hours where the plan has one): usage
+// fills it in Claude's own orange, and the gap between usage and the window's
+// elapsed time is green while usage trails time (room to spare) or red past
+// it (spending ahead). The track matches the
+// unselected buttons beside it in the desktop's dark theme, and no theme key
+// names the dark green, so those two are raw colors.
 const TRACK = '#454545'
-const TIME_FILL = 'suggestion'
 const USAGE_FILL = 'claude'
+const HEADROOM_FILL = '#2f5a2a'
+const OVER_FILL = 'error'
 
-const LABEL_W = 11
-const PCT_W = 5
+const LABEL_W = 6
+const PCT_W = 11
 const VERDICT_W = 10
 
-// Kept across sessions in $.store: the last weekly reading any session saw.
+// Kept across sessions in $.store: the last readings any session saw.
 const LAST_WEEK = 'last-week-1'
+const LAST_FIVE = 'last-five-1'
 
 function asWeek(v: unknown): Week {
   if (typeof v !== 'object' || v === null) return null
   const { used, resetsAt } = v as Record<string, unknown>
   if (typeof used !== 'number' || typeof resetsAt !== 'string') return null
   return { used, resetsAt }
+}
+
+function reading(limits: readonly SessionRateLimit[], kind: string): Week {
+  const r = limits.find(l => l.kind === kind)
+  return r?.resetsAt ? { used: r.percentUsed, resetsAt: r.resetsAt } : null
 }
 
 const clamp = (n: number) => Math.max(0, Math.min(100, n))
@@ -57,33 +71,40 @@ function family(id: string): string {
   return MODELS.find(([label]) => s.includes(label.toLowerCase()))?.[0] ?? ''
 }
 
-// Once the reset passes, the window moves a week on and the old reading no
-// longer applies; show it as fresh until the next reading arrives.
-function currentWindow(w: NonNullable<Week>, now: number) {
+// How far `now` is through the window of `period` ms that ends at the reset.
+// Past the reset the reading no longer applies. A week rolls on to the next
+// one, shown fresh until a reading arrives; a 5-hour window opens again only
+// with the next request, so until then there is none to show.
+function currentWindow(w: NonNullable<Week>, now: number, period: number, rolls: boolean) {
   let resetsAt = Date.parse(w.resetsAt)
   if (!Number.isFinite(resetsAt)) return null
   let used = w.used
   if (now >= resetsAt) {
-    resetsAt += Math.ceil((now - resetsAt + 1) / WEEK_MS) * WEEK_MS
+    if (!rolls) return null
+    resetsAt += Math.ceil((now - resetsAt + 1) / period) * period
     used = 0
   }
-  return { used, elapsed: clamp(((now - (resetsAt - WEEK_MS)) / WEEK_MS) * 100) }
+  return { used, elapsed: clamp(((now - (resetsAt - period)) / period) * 100) }
 }
 
 export const register: Register = on => {
   on('session.start', async ($, e, next) => {
     try {
-      const usage = await $.session.usage()
-      const w = usage.rateLimits.find(r => r.kind === 'seven_day')
-      if (w?.resetsAt) {
-        const reading = { used: w.percentUsed, resetsAt: w.resetsAt }
-        await update($, week, () => reading)
-        await $.store.set(LAST_WEEK, reading).catch(() => {})
+      const { rateLimits } = await $.session.usage()
+      const w = reading(rateLimits, 'seven_day')
+      if (w) {
+        const f = reading(rateLimits, 'five_hour')
+        await update($, week, () => w)
+        await update($, fiveHour, () => f)
+        await $.store.set(LAST_WEEK, w).catch(() => {})
+        await $.store.set(LAST_FIVE, f).catch(() => {})
       } else {
         // A new conversation has no reading until its first response: start
-        // from the last one any session saw, which the first response replaces.
+        // from the last ones any session saw, which the first response replaces.
         const saved = asWeek(await $.store.get(LAST_WEEK).catch(() => null))
         if (saved) await update($, week, () => saved)
+        const savedFive = asWeek(await $.store.get(LAST_FIVE).catch(() => null))
+        if (savedFive) await update($, fiveHour, () => savedFive)
       }
       const m = await $.session.model()
       await update($, model, () => m)
@@ -134,11 +155,15 @@ export const register: Register = on => {
   }).catch(($, e, next) => next(e))
 
   on('session.measure', async ($, e, next) => {
-    const w = e.rateLimits.find(r => r.kind === 'seven_day')
-    if (w?.resetsAt) {
-      const reading = { used: w.percentUsed, resetsAt: w.resetsAt }
-      await update($, week, () => reading).catch(() => {})
-      await $.store.set(LAST_WEEK, reading).catch(() => {})
+    // A response that reports the week but no 5-hour window comes from a plan
+    // without one: that clears the 5-hour row.
+    const w = reading(e.rateLimits, 'seven_day')
+    if (w) {
+      const f = reading(e.rateLimits, 'five_hour')
+      await update($, week, () => w).catch(() => {})
+      await update($, fiveHour, () => f).catch(() => {})
+      await $.store.set(LAST_WEEK, w).catch(() => {})
+      await $.store.set(LAST_FIVE, f).catch(() => {})
     }
     return next(e)
   })
@@ -150,7 +175,9 @@ export const register: Register = on => {
     await read($, tick)
     const now = await $.clock.now()
     const w = await read($, week)
-    const win = w ? currentWindow(w, now) : null
+    const win = w ? currentWindow(w, now, WEEK_MS, true) : null
+    const f = await read($, fiveHour)
+    const five = f ? currentWindow(f, now, FIVE_HOUR_MS, false) : null
     const cur = family(await read($, model))
     const eff = await read($, effort)
     const last = (await read($, warmAt))[cur] ?? 0
@@ -160,39 +187,52 @@ export const register: Register = on => {
 
     const cells = Math.max(10, Math.min(40, e.props.bodyColumns - LABEL_W - PCT_W - VERDICT_W - 2))
 
-    // A fixed-width track with a filled Box inside: both bars start and end at
-    // the same place whatever the fill, with no glyphs to differ in width.
-    const bar = (id: string, label: string, pct: number, color: string, tail: RenderChildren) => {
-      const fill = Math.round((clamp(pct) / 100) * cells)
+    // A fixed-width track holding usage, then the gap to elapsed time: Boxes
+    // of whole cells, with no glyphs to differ in width between surfaces.
+    const paceRow = (id: string, label: string, win: { used: number; elapsed: number }) => {
+      const u = Math.round((clamp(win.used) / 100) * cells)
+      const t = Math.round((clamp(win.elapsed) / 100) * cells)
+      const gap = Math.abs(u - t)
+      const pace = Math.round(win.used - win.elapsed)
+      const color = pace > 5 ? 'error' : pace < -5 ? 'success' : 'warning'
+      const verdict = pace > 5 ? `+${pace} over` : pace < -5 ? `${pace} under` : 'on pace'
       return (
-        <Box key={label} flexDirection="row" alignItems="center">
+        <Box key={id} flexDirection="row" alignItems="center">
           <Box width={LABEL_W} flexShrink={0}>
             <Text dimColor wrap="truncate">
               {label}
             </Text>
           </Box>
           <Box key={`track-${id}`} width={cells} height={1} flexShrink={0} backgroundColor={TRACK} flexDirection="row">
-            {fill > 0 && <Box key={`fill-${id}`} width={fill} height={1} flexShrink={0} backgroundColor={color} />}
+            {Math.min(u, t) > 0 && (
+              <Box
+                key={`fill-usage-${id}`}
+                width={Math.min(u, t)}
+                height={1}
+                flexShrink={0}
+                backgroundColor={USAGE_FILL}
+              />
+            )}
+            {gap > 0 && (
+              <Box
+                key={u < t ? `fill-headroom-${id}` : `fill-over-${id}`}
+                width={gap}
+                height={1}
+                flexShrink={0}
+                backgroundColor={u < t ? HEADROOM_FILL : OVER_FILL}
+              />
+            )}
           </Box>
-          <Box width={PCT_W} flexShrink={0} justifyContent="flex-end">
-            <Text>{`${Math.round(pct)}%`}</Text>
+          <Box width={PCT_W} flexShrink={0} flexDirection="row" justifyContent="flex-end">
+            <Text>{`${Math.round(win.used)}%`}</Text>
+            <Text dimColor>{` / ${Math.round(win.elapsed)}%`}</Text>
           </Box>
           <Box width={VERDICT_W} flexShrink={0} paddingLeft={1}>
-            {tail}
+            <Text color={color} wrap="truncate">
+              {verdict}
+            </Text>
           </Box>
         </Box>
-      )
-    }
-
-    let verdict = <Text> </Text>
-    if (win) {
-      const gap = Math.round(win.used - win.elapsed)
-      const color = gap > 5 ? 'error' : gap < -5 ? 'success' : 'warning'
-      const text = gap > 5 ? `+${gap} over` : gap < -5 ? `${gap} under` : 'on pace'
-      verdict = (
-        <Text color={color} wrap="truncate">
-          {text}
-        </Text>
       )
     }
 
@@ -210,13 +250,13 @@ export const register: Register = on => {
 
     return (
       <Box flexDirection="column">
-        {win && (
+        {(win || five) && (
           <Box flexDirection="column" rowGap="xs">
-            {bar('time', 'Week time', win.elapsed, TIME_FILL, <Text> </Text>)}
-            {bar('usage', 'Week usage', win.used, USAGE_FILL, verdict)}
+            {win && paceRow('week', 'Week', win)}
+            {five && paceRow('five', '5h', five)}
           </Box>
         )}
-        {win && <Text> </Text>}
+        {(win || five) && <Text> </Text>}
         <Box flexDirection="row" alignItems="center" flexWrap="wrap">
           {MODELS.map(([label, id]) => (
             <Button key={id} variant={cur === label ? 'primary' : undefined} label={label} onPress={run('model', id)} />

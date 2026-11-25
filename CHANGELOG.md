@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.4.0
+
+- The week time and usage bars are one row: usage in orange, then the gap to the week's elapsed time
+  in green (room to spare) or red (spending ahead), with `used% / time%` beside it. The band is a
+  line shorter.
+- `TIME_FILL` is gone; `HEADROOM_FILL` and `OVER_FILL` color the gap.
+- On plans with a 5-hour window, a second `5h` row shows it the same way, while a window is open.
+- Model buttons run weakest to strongest: Haiku, Sonnet, Opus, Fable.
+
 ## 0.3.4
 
 - README lists the slash commands the plugin runs and when.

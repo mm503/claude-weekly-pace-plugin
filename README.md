@@ -3,11 +3,14 @@
 A Claude Code plugin that shows, above the prompt, whether you are spending your weekly usage faster
 than the week is passing, and lets you switch model and effort in one click.
 
-![weekly-pace in the Claude desktop app: week time and usage bars with model and effort buttons above the prompt](docs/screenshot-desktop.png)
+![weekly-pace in the Claude desktop app: the week bar with model and effort buttons above the prompt](docs/screenshot-desktop.png)
 
-- **Week time** (blue): how far you are through your weekly limit window.
-- **Week usage** (orange): how much of the weekly all-models limit you have used, with a verdict:
-  `+N over` (red, spending ahead of the week), `N under` (green) or `on pace` (within 5 points).
+- **Week bar**: one row comparing usage with time. Orange is how much of the weekly all-models limit
+  you have used. The rest of the way to how far you are through the week is green when you have room
+  to spare, or red past it when you are spending ahead of the week. Beside it, `used% / time%` and a
+  verdict: `+N over` (red), `N under` (green) or `on pace` (within 5 points).
+- **5h bar**: the same for the 5-hour window, on plans that have one. It shows only while a 5-hour
+  window is open; plans without one never see it.
 - **Model and effort buttons**: one click runs `/model` or `/effort`; the active ones are highlighted,
   including changes you type yourself.
 - **warm Nm / cold**: whether the current model's prompt cache is likely still warm, and for how long.
@@ -56,12 +59,15 @@ claude plugin uninstall weekly-pace@weekly-pace
 ## How it works
 
 - Usage comes from the weekly (`seven_day`) rate-limit reading Claude Code receives with each response.
-  The plugin saves the last reading, so a new conversation shows the bars straight away; the first
-  response replaces them with live figures. After the weekly reset the bars start over at 0%.
+  The plugin saves the last reading, so a new conversation shows the bar straight away; the first
+  response replaces it with live figures. After the weekly reset the bar starts over at 0%.
 - Week time is computed from the reset time: the window is the 7 days before it.
+- The 5-hour bar comes from the `five_hour` reading, when responses carry one, and its time from the
+  5 hours before that window's reset. Past the reset the row goes away until a new request opens the
+  next window; a response that reports the week but no 5-hour window removes it.
 - Warm/cold is an estimate: the time of the last response on the current model against a 60-minute
   cache lifetime. Each model keeps its own cache, so switching models shows `cold` until it answers.
-- The band redraws every 30 seconds, so the time bar and the countdown keep moving between turns.
+- The band redraws every 30 seconds, so the time mark and the countdown keep moving between turns.
 
 ## Commands it runs
 
@@ -80,10 +86,11 @@ Everything is at the top of `weekly-pace/hooks/register.tsx`:
 | Constant | What it sets |
 | --- | --- |
 | `CACHE_TTL_MS` | Prompt-cache lifetime (60 min). Use `5 * 60 * 1000` if your cache lasts 5 minutes. |
-| `MODELS` | The model buttons: a label and the id passed to `/model`. Update when models change. |
+| `MODELS` | The model buttons, weakest to strongest: a label and the id passed to `/model`. Update when models change; delete a line to hide a model your plan doesn't include. |
 | `EFFORTS` | The effort buttons. |
-| `TRACK` | The empty part of the bars, `#454545`, matched to the desktop app's dark theme. Pick a lighter gray if you use a light theme. |
-| `TIME_FILL`, `USAGE_FILL` | The fill colors, as theme keys so they follow light and dark themes. |
+| `TRACK` | The empty part of the bar, `#454545`, matched to the desktop app's dark theme. Pick a lighter gray if you use a light theme. |
+| `USAGE_FILL`, `OVER_FILL` | Usage, and usage past the week's elapsed time: theme keys (`claude`, `error`) so they follow light and dark themes. |
+| `HEADROOM_FILL` | The gap from usage up to the week's elapsed time, `#2f5a2a` (dark green). Pick a lighter green if you use a light theme. |
 
 ## Develop
 
